@@ -1,44 +1,33 @@
 apiVersion: ripsaw.cloudbulldozer.io/v1alpha1
 kind: Benchmark
 metadata:
-  name: hammerdb
+  name: hammerdb-vm-benchmark
   namespace: my-ripsaw
 spec:
-  system_metrics:
-    collection: true
-    prom_url: https://prometheus-k8s.openshift-monitoring.svc.cluster.local:9091
-    es_url: ES_SERVER
-    prom_token: PROMETHEUS_TOKEN
-    metrics_profile: node-metrics.yml
   elasticsearch:
-    url: ES_SERVER
+    url: http://my.elasticsearch.server:80
     index_name: ripsaw-hammerdb
   metadata:
-    collection: true
+    collection: false
   workload:
     name: hammerdb
     args:
       #image: # add custom hammerdb image
       pin: false # true for nodeSelector
       pin_client: "node1"
-      resources: true # true for resources requests/limits
-      requests_cpu: 200m
-      requests_memory: 100Mi
-      limits_cpu: 2
-      limits_memory: 2Gi
       db_type: "mssql"
       timed_test: true
       test_type: "tpc-c"
       db_init: true # true only for first run to build schema
       db_benchmark: true
-      db_server: "mssql-deployment.sql-server"
+      db_server: "127.0.0.1"
       db_port: "1433"
       db_warehouses: 1
       db_num_workers: 1
       db_user: "SA"
       db_pass: "s3curePasswordString"
       db_name: "tpcc"
-      transactions: 10000
+      transactions: 500000
       raiseerror: "false"
       keyandthink: "false"
       driver: "timed"
@@ -75,4 +64,22 @@ spec:
       db_postgresql_dritasnap: "false"
       db_postgresql_oracompat: "false"
       db_postgresql_storedprocs: "false"
-      debug: true
+      kind: vm
+      client_vm:
+        dedicatedcpuplacement: false
+        sockets: 1
+        cores: 4
+        threads: 1
+        image: quay.io/ebattat/centos8-mssql2019-container-disk:latest
+        limits:
+          memory: 16Gi
+        requests:
+          memory: 16Gi
+        network:
+          front_end: bridge # or masquerade
+          multiqueue:
+            enabled: false # if set to true, highly recommend to set selinux to permissive on the nodes where the vms would be scheduled
+            queues: 0 # must be given if enabled is set to true and ideally should be set to vcpus ideally so sockets*threads*cores, your image must've ethtool installed
+        extra_options:
+          - none
+          #- hostpassthrough
